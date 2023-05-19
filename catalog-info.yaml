@@ -1,0 +1,12 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: "syn-stress-test-ceph-2000-cores"
+  description: "dsadd"
+  annotations:
+    github.com/project-slug: cwiklik/mda-stress-job
+    backstage.io/kubernetes-id: "syn-stress-test-ceph-2000-cores"
+spec:
+  type: service
+  lifecycle: experimental
+  owner: "user:default/guest"

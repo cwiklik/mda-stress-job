@@ -1,0 +1,91 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    synopsys: "true"
+  name: synopsys-dpserver-job
+spec:
+  parallelism: 
+  template:
+    spec:
+      hostNetwork: 
+      tolerations:
+      - key: "env"
+        operator: "Equal"
+        value: "dpserver"
+        effect: "NoSchedule"
+      containers:
+        -
+          args:
+            - "-c"
+            - ". ${SYNOPSYS_HOME_LOCAL}/precim_setup.sh; ${SYNOPSYS_HOME_LOCAL}/bin/dpserver -pMASTER_PORT -c -V5 1> ${RUN_ROOT_DIR}/remote_logs/${MY_POD_NAME}.log 2> ${RUN_ROOT_DIR}/remote_logs/${MY_POD_NAME}.err"
+          command:
+            - /bin/bash
+          image: "br.icr.io/ant-opc/centos/proteus-m11-update:latest"
+          imagePullPolicy: "IfNotPresent"
+          name: proteus
+          securityContext:
+            runAsUser: 1063
+            runAsGroup: 1032
+          ports:
+            -
+              containerPort: 27020
+              name: port27020
+            -
+              containerPort: 51924
+              name: port51924
+            -
+              containerPort: 15000
+              name: port15000
+          env:
+          - name: RUN_ROOT_DIR
+            value: 
+          - name: SNPSLMD_LICENSE_FILE
+            value: "27020@192.168.24.4:27020@192.168.24.5"
+          - name: LM_LICENSE_FILE
+            value: "27020@192.168.24.4:27020@192.168.24.5"
+          - name: SYNOPSYS_HOME_LOCAL
+            value: "/eda/tools/synopsys/proteus/M-2017.03-12-T-20211020"
+          - name: DPROT_LOC
+            value: "/eda/tools/synopsys/proteus/config"
+          - name: PRECIM_HOME
+            value: "/eda/tools/synopsys/proteus/M-2017.03-12-T-20211020"
+          - name: DPROTEUS_CFG
+            value: "/eda/tools/synopsys/proteus/config/dproteus_ibm.cfg"
+          - name: YAML_BASE_DIR
+            value: ""
+          - name: MY_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: MY_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          resources:
+            limits:
+              memory: 9000Mi
+            requests:
+              memory: 9000Mi
+          volumeMounts:
+            - mountPath: /ceph-data
+              name: cephfs
+            - mountPath: /data
+              name: proteus-data-pv-claim
+      volumes:
+        - name: cephfs
+          persistentVolumeClaim:
+            claimName: ceph-data-pvc
+        - name: proteus-data-pv-claim
+          persistentVolumeClaim:
+            claimName: proteus-data-pv-claim
+      restartPolicy: Never
+  ttlSecondsAfterFinished: 100

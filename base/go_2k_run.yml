@@ -1,0 +1,99 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  labels:
+    synopsys: "true"
+  name: synopsys-primary-syn-stress-test-ceph-2000-cores-job
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      hostNetwork: false
+      tolerations:
+      - key: "env"
+        operator: "Equal"
+        value: "primary"
+        effect: "NoSchedule"
+      containers:
+        -
+          args:
+            - "-c"
+            - ". $PRECIM_HOME/precim_setup.sh; ${SYNOPSYS_HOME_LOCAL}/bin/proteus -s ${SOCK_SERVER_IP}:${NUM_CORES} -V5 -m $RUN_ROOT_DIR/go_2k_run.pjx 1> $RUN_ROOT_DIR/go_2k_run.log 2>$RUN_ROOT_DIR/go_2k_run.err"
+          command:
+            - /usr/bin/sh
+          image: "br.icr.io/ant-opc/centos/proteus-m11-update:latest"
+          #imagePullPolicy: "IfNotPresent"
+          imagePullPolicy: "Always"
+          name: proteus
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1063
+            runAsGroup: 1032
+          ports:
+            -
+              containerPort: 27020
+              name: port27020
+            -
+              containerPort: 51924
+              name: port51924
+            -
+              containerPort: 15001
+              name: port15001
+          env:
+          - name: RUN_ROOT_DIR
+            value: /ceph-data/user:default/guest/syn-stress-test/2000_cores.ceph.mds8.12GiB.newvars.06nov22
+          - name: NUM_CORES
+            value: "2000"
+          - name: SNPSLMD_LICENSE_FILE
+            value: "27020@192.168.24.5:27020@192.168.24.4"
+          - name: LM_LICENSE_FILE
+            value: "27020@192.168.24.5:27020@192.168.24.4"
+          - name: SYNOPSYS_HOME_LOCAL
+            value: "/eda/tools/synopsys/proteus/M-2017.03-12-T-20211020"
+          - name: DPROT_LOC
+            value: "/eda/tools/synopsys/proteus/config"
+          - name: PRECIM_HOME
+            value: "/eda/tools/synopsys/proteus/M-2017.03-12-T-20211020"
+          - name: DPROTEUS_CFG
+            value: "/eda/tools/synopsys/proteus/config/dproteus_ibm.cfg"
+          - name: YAML_BASE_DIR
+            value: ""
+          - name: SOCK_SERVER_IP
+            value: "172.26.8.12"
+          - name: SOCK_SERVER_PORT
+            value: "15011"
+          - name: MY_NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: MY_POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: MY_POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: MY_POD_IP
+            valueFrom:
+              fieldRef:
+                fieldPath: status.podIP
+          resources:
+            limits:
+              memory: 60000Mi
+            requests:
+              memory: 60000Mi
+          volumeMounts:
+            - mountPath: /ceph-data
+              name: cephfs
+            - mountPath: /data
+              name: proteus-data-pv-claim
+      volumes:
+        - name: cephfs
+          persistentVolumeClaim:
+            claimName: ceph-data-pvc
+        - name: proteus-data-pv-claim
+          persistentVolumeClaim:
+            claimName: proteus-data-pv-claim
+      restartPolicy: Never
+  ttlSecondsAfterFinished: 100
